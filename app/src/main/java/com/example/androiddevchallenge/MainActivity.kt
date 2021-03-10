@@ -15,33 +15,68 @@
  */
 package com.example.androiddevchallenge
 
-import android.os.Bundle
+import android.os.*
+import android.text.format.DateUtils
+import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.getSystemService
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModelProvider
 import com.example.androiddevchallenge.ui.theme.MyTheme
+lateinit var viewmodel:CountdownViewmodel
+var _count = MutableLiveData<String>()
+var count : LiveData<String> = _count
+
+private var _second = MutableLiveData("")
+val second: LiveData<String> = _second
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        viewmodel = ViewModelProvider(this).get(CountdownViewmodel::class.java)
+        viewmodel.second.observe(this,{
+            _count.value = it
+        })
+
         setContent {
             MyTheme {
+                Timer()
                 MyApp()
             }
         }
     }
 }
 
-// Start building your app here!
 @Composable
-fun MyApp() {
-    Surface(color = MaterialTheme.colors.background) {
-        Text(text = "Ready... Set... GO!")
+fun Timer(){
+    val timer: CountDownTimer
+    timer = object : CountDownTimer(
+        CountdownViewmodel.COUNTDOWN_TIME,
+        CountdownViewmodel.ONE_SECOND
+    ) {
+
+        override fun onTick(millisUntilFinished: Long) {
+            _second.value = DateUtils.formatElapsedTime(millisUntilFinished / CountdownViewmodel.ONE_SECOND)
+        }
+
+        override fun onFinish() {
+            _second.value = "0"
+            //_eventBuzz.value = BuzzType.GAME_OVER
+        }
     }
+    timer.start()
 }
 
 @Preview("Light Theme", widthDp = 360, heightDp = 640)
@@ -59,3 +94,17 @@ fun DarkPreview() {
         MyApp()
     }
 }
+
+private fun buzz(pattern: LongArray) {
+    val buzzer = MainActivity().getSystemService<Vibrator>()
+    buzzer?.let {
+        // Vibrate for 500 milliseconds
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            buzzer.vibrate(VibrationEffect.createWaveform(pattern, -1))
+        } else {
+            //deprecated in API 26
+            buzzer.vibrate(pattern, -1)
+        }
+    }
+}
+
